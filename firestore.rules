@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signed() { return request.auth != null; }
+    // ЗАМЕНИТЕ на вашу Google-почту (та же, что в index.html, константа OWNER)
+    function admin() {
+      return signed()
+        && request.auth.token.email == 'ВАШ_EMAIL@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    // Устройства: пишет любое устройство, читает только владелец
+    match /devices/{id} {
+      allow read: if admin();
+      allow create, update: if signed();
+      allow delete: if admin();
+    }
+
+    // Роли, муты, баны, благодарности: читают вошедшие, меняет только владелец
+    match /roles/{id} {
+      allow read: if signed();
+      allow write: if admin();
+    }
+
+    // Правки страниц сайта: читают все, пишет владелец
+    match /pages/{id} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Профили: читают все, свой профиль меняет сам человек
+    match /members/{id} {
+      allow read: if true;
+      allow write: if admin() || (signed() && request.auth.uid == id);
+    }
+
+    // Новости, объявления, бегущая строка: читают все, пишет владелец
+    match /{col}/{id} {
+      allow read: if col in ['news', 'board', 'ticker', 'cpages'];
+      allow write: if col in ['news', 'board', 'ticker', 'cpages'] && admin();
+    }
+
+    // Вопросы, творчество, чат, галерея
+    match /{col}/{id} {
+      allow read: if col in ['qa', 'fan', 'chat', 'gal'];
+      allow create: if col in ['qa', 'fan', 'chat', 'gal']
+        && signed() && request.resource.data.by == request.auth.uid;
+      allow update: if col in ['qa', 'fan', 'chat', 'gal'] && admin();
+      allow delete: if col in ['qa', 'fan', 'chat', 'gal']
+        && (admin() || resource.data.by == request.auth.uid);
+    }
+  }
+}

@@ -31,8 +31,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;bac
 .rd{background:#000;color:#000;cursor:pointer;padding:0 4px;border:1px solid var(--bd);user-select:none}.rd:hover{background:var(--ac)}.rd.on{background:transparent;color:var(--tx)}details{background:var(--sf);border:1px solid var(--bd);margin:8px 0;padding:8px 12px}summary{cursor:pointer;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ac)}
 .ib{float:right;width:270px;max-width:100%;margin:0 0 12px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden}.ib h3{margin:0;padding:8px 10px;background:var(--ac);color:#fff;font-size:15px;text-align:center}.ib table{font-size:13px}.ib th{width:38%}@media(max-width:600px){.ib{float:none;width:100%;margin:0 0 12px}}.cat{margin-top:24px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--sf);font-size:14px}
 a{color:var(--ac)}
+#nb{font-size:12px}#nb.up{color:#3fb950}#nb.dn{color:#f85149}
 </style></head><body>
-<header><div class="top"><span class="logo">⚔ ОРДЕН</span><input type="search" id="q" placeholder="Поиск по энциклопедии"><button id="inv">Пригласить</button><button id="lg" class="g" style="padding:6px 10px;font-size:13px">Вход</button><span id="me"></span></div><nav id="nav"></nav></header>
+<header><div class="top"><span class="logo">⚔ ОРДЕН</span><span id="nb" class="tag">…</span><input type="search" id="q" placeholder="Поиск по энциклопедии"><button id="inv">Пригласить</button><button id="lg" class="g" style="padding:6px 10px;font-size:13px">Вход</button><span id="me"></span></div><nav id="nav"></nav></header>
 <div id="tk" class="tk"></div>
 <main id="main"></main>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -82,7 +83,7 @@ W.allies={t:'Союзники',h:'<h2>Расы</h2>'+T([['Раса','Стату�
 W.life={t:'Быт и награды',h:'<h2>Распорядок клонов</h2>'+T([['Время','Действие'],['05:30','Подъём'],['07:00','Построение, объявления комиссара'],['08:00-12:00','Служба'],['14:00-18:00','Операции, учения'],['19:00','Вечерняя поверка'],['20:00-22:00','Личное время'],['22:00','Отбой']])+'<h2>Сухой паёк</h2><p>Три коробки в день: основное блюдо, галеты, джем, шоколад «Монолит» или «Алтыскир», кофе или чай, витамины, разогреватель. Котелок изогнут как банан, фляга 500 мл с фильтром.</p><h2>Венки</h2><p>Медный (доблесть), серебряный (годы службы), золотой (спасение союзников), чёрный (легенда). Вплавляется в шлем. Мемориал на «Цитадели-4».</p><h2>Орден любит и не терпит</h2><p>Любит порядок, дисциплину, знание, сталь. Не терпит хаос, неподчинение, предательство и бессмысленные потери.</p>'};
 CN.tech='Техника и снаряжение';Object.assign(WC,{weap:['tech'],armor:['tech'],veh:['tech'],fleet:['tech'],base:['ref'],enemy:['lore'],allies:['lore'],life:['lore']});
 const TK=['[СВОДКА] 816-й легион завершил зачистку. Потери: 2 клона. Имена внесены в Пантеон.','[ВНИМАНИЕ] Протоколы 204 и 224 остаются в силе. Допуск: корпусной.','[КОМИССАРИАТ] Рапорты принимаются до 18:00. Длинные рапорты принимаются тоже.','[ЦИТАДЕЛЬ-4] Набор «свежаков» на обучение открыт.','[ДЕВИЗ] Служим Ордену. Сталь не гнётся.'];
-document.getElementById('tk').innerHTML='<span>'+TK.join('   ◆   ')+'</span>';
+setTk(TK);
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('.rd');if(t)t.classList.toggle('on')});
 const RM=['Говорят, Гендиректор не спит уже две тысячи лет.','Кейн 88 опять выпил всю валерьянку в секторе.','Рубец опять нашёл где-то мороженое. Где — не знает никто.','Клещ собрал корабль из крышек от сухпаёка.','У Ветра швабры ломаются чаще, чем у других винтовки.','Луна ведёт дневник. Даже восемь строчек про сухпаёк.','Тень не снимает шлем. Даже для сна.','«Тихие» не оставляют следов. Даже отчётов.','Комиссар работает дольше всех. Потому что рапорты сами себя не пишут.'];
 function rumor(){document.getElementById('rm').textContent='«'+RM[Math.floor(Math.random()*RM.length)]+'»'}
@@ -126,9 +127,9 @@ function nameOf(id){return (members[id]&&members[id].name)||'Участник'}
 function avOf(id){const p=members[id]&&members[id].photo;return p?`<img class="av" src="${esc(p)}" alt="">`:'<span class="av"></span>'}
 function stopAll(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[]}
 function route(){stopAll();const k=(location.hash||'#home').slice(1);
- nav.innerHTML=[['home','Главная'],...Object.keys(W).slice(1).map(x=>[x,W[x].t]),...COM,...(isOwner?[['dev','Устройства']]:[])].map(([a,b])=>`<a href="#${a}" class="${a===k?'on':''}">${b}</a>`).join('');
- if(k.slice(0,2)==='h-'&&HER[k.slice(2)])pageHero(k.slice(2));else if(k.slice(0,2)==='c-')pageCat(k.slice(2));else if(W[k]){main.innerHTML=`<h1>${W[k].t}</h1>`+(PG[k]!=null?PG[k]:W[k].h)+catFoot(k)+edBtn(k);if(k==='home')homeFx();if(k==='home')document.getElementById('hub').innerHTML=Object.keys(W).slice(1).concat(COM.map(c=>c[0])).map(x=>`<a class="card" href="#${x}"><b>${W[x]?W[x].t:COM.find(c=>c[0]===x)[1]}</b></a>`).join('')}
- else if(k==='mem')pageMem();else if(k==='dev')pageDev();else if(k==='gal')pageGal();else if(COM.some(c=>c[0]===k))pageFeed(k);else{location.hash='#home'}cardify()}
+ nav.innerHTML=[['home','Главная'],...Object.keys(W).slice(1).map(x=>[x,W[x].t]),...Object.keys(CP).map(x=>[x,CP[x].t]),...COM,...(isOwner?[['dev','Устройства'],['new','＋ Страница']]:[])].map(([a,b])=>`<a href="#${a}" class="${a===k?'on':''}">${b}</a>`).join('');
+ if(CP[k])pageCP(k);else if(k==='new')pageNew();else if(k.slice(0,2)==='h-'&&HER[k.slice(2)])pageHero(k.slice(2));else if(k.slice(0,2)==='c-')pageCat(k.slice(2));else if(W[k]){main.innerHTML=`<h1>${W[k].t}</h1>`+(PG[k]!=null?PG[k]:W[k].h)+catFoot(k)+edBtn(k);if(k==='home')homeFx();if(k==='board')boardInit();if(k==='home')document.getElementById('hub').innerHTML=Object.keys(W).slice(1).concat(COM.map(c=>c[0])).map(x=>`<a class="card" href="#${x}"><b>${W[x]?W[x].t:COM.find(c=>c[0]===x)[1]}</b></a>`).join('')}
+ else if(k==='mem')pageMem();else if(k==='dev')pageDev();else if(k==='gal')pageGal();else if(COM.some(c=>c[0]===k))pageFeed(k);else if(!CPL&&window.firebase&&FB.apiKey!=='ВСТАВЬТЕ'){main.innerHTML='<p class="mu">Загрузка…</p>'}else{location.hash='#home'}cardify()}
 function cardify(){main.querySelectorAll('.tw').forEach(w=>{const t=w.querySelector('table');if(!t||t.rows.length<2)return;const rows=[...t.rows];const hd=[...rows[0].cells].map(c=>c.textContent);const g=document.createElement('div');g.className='cg';rows.slice(1).forEach(r=>{const c=[...r.cells];const d=document.createElement('div');d.className='ci';d.innerHTML='<h4>'+c[0].innerHTML+'</h4>'+c.slice(1).map((x,i)=>'<p>'+(c.length>2?'<span>'+hd[i+1]+'</span>':'')+x.innerHTML+'</p>').join('');g.appendChild(d)});w.replaceWith(g)})}
 addEventListener('hashchange',route);
 document.getElementById('q').addEventListener('input',e=>{const v=e.target.value.trim().toLowerCase();if(v.length<2){route();return}stopAll();
@@ -145,7 +146,7 @@ function pageFeed(col){const T={qa:['Вопросы и ответы','Задай
   fe.innerHTML=ds.map(d=>`<div class="${col==='chat'?'msg':'card'}">${d.t?`<b>${esc(d.t)}</b><br>`:''}${avOf(d.by)}<span class="mu">${esc(nameOf(d.by))}</span><div>${esc(d.x).replace(/\n/g,'<br>')}</div>${col==='qa'?(d.a?`<div class="card"><span class="tag">ответ</span><div>${esc(d.a).replace(/\n/g,'<br>')}</div></div>`:(canEdit?`<div class="row"><input data-a="${d.id}" placeholder="Ответ"><button data-s="${d.id}">Ответить</button></div>`:'<span class="mu">Ждёт ответа</span>')):''}${canEdit&&col!=='qa'?`<button class="g" data-d="${d.id}">Удалить</button>`:''}</div>`).join('')||'<p class="mu">Пока пусто.</p>';
   fe.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const v=fe.querySelector(`[data-a="${b.dataset.s}"]`).value.trim();if(v)db.collection(col).doc(b.dataset.s).update({a:v})});
   fe.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>db.collection(col).doc(b.dataset.d).delete())},()=>{});unsub.push(u)}
-function pageMem(){main.innerHTML='<h1>Участники</h1><div id="pf"></div><div id="ml"></div>';if(!needDb())return;
+function pageMem(){main.innerHTML='<h1>Участники</h1><div id="pf"></div><div id="ml"></div>';if(!db||!uid){pageMemLocal();return}
  const m=members[uid]||{};const pf=document.getElementById('pf');
  pf.innerHTML=`<div class="card"><b>Ваш профиль</b> ${m.joined?'':'<span class="tag">вы ещё не присоединились</span>'}<div class="row"><input id="pn" placeholder="Ваше имя" value="${esc(m.name||'')}"></div><div class="row"><label class="fb">📷 Выбрать фото<input id="pp" type="file" accept="image/*" hidden></label><span id="pv">${m.photo?avOf(uid):''}</span></div><textarea id="pb" rows="2" style="width:100%" placeholder="О себе">${esc(m.bio||'')}</textarea><div class="row"><button id="ps">${m.joined?'Сохранить':'Присоединиться'}</button></div><p class="mu">Роль выдаёт владелец. Фактические права на запись задаются в меню «Поделиться» (Contributor нужен для вопросов, чата и творчества).</p></div>`;
  pf.querySelector('#pp').onchange=async e=>{try{const d=await shrink(e.target.files[0]);document.getElementById('pv').innerHTML='<img class="av" src="'+d+'">'}catch(x){}};pf.querySelector('#ps').onclick=async()=>{let photo=m.photo||'';const file=pf.querySelector('#pp').files[0];
@@ -155,6 +156,55 @@ function pageMem(){main.innerHTML='<h1>Участники</h1><div id="pf"></div
   el.innerHTML='<h2>Список</h2>'+s.docs.map(d=>{const r=(roles[d.id]&&roles[d.id].role)||'reader';return `<div class="card">${avOf(d.id)}<b>${esc(nameOf(d.id))}</b> <span class="tag">${RL[r]}</span>${isOwner?` <select data-r="${d.id}">${Object.keys(RL).map(k=>`<option value="${k}"${k===r?' selected':''}>${RL[k]}</option>`).join('')}</select> <select data-s="${d.id}"><option value="">наказание</option><option value="m1">мут 1 ч</option><option value="m24">мут 24 ч</option><option value="m168">мут 7 дн</option><option value="b30">бан 30 дн</option><option value="bp">бан навсегда</option><option value="clear">снять</option></select> <button class="g" data-t="${d.id}">★ Благодарность</button>`:''}${sanTag(d.id)}${d.data().bio?`<div class="mu">${esc(d.data().bio)}</div>`:''}</div>`}).join('')||'<p class="mu">Пока никого.</p>';
   el.querySelectorAll('[data-r]').forEach(sel=>sel.onchange=()=>setR(sel.dataset.r,{role:sel.value}));el.querySelectorAll('[data-s]').forEach(sel=>sel.onchange=()=>{const v=sel.value,H=3600000;const p={mute:0,ban:0};if(v[0]==='m')p.mute=Date.now()+H*v.slice(1);if(v==='b30')p.ban=Date.now()+720*H;if(v==='bp')p.ban=-1;if(v)setR(sel.dataset.s,p)});el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setR(b.dataset.t,{thanks:((roles[b.dataset.t]||{}).thanks||0)+1}))},()=>{});unsub.push(u)}
 function pageGal(){main.innerHTML='<h1>Галерея</h1><div id="gf"></div><div id="gl"></div>';if(!needDb())return;const f=document.createElement('div');f.className='card';f.innerHTML='<input id="gn" placeholder="Подпись" style="width:100%;margin-bottom:6px"><input id="gp" type="file" accept="image/*" style="width:100%"><div class="row"><button id="gs">Загрузить</button></div><p class="mu">Только фото (сжимаются автоматически).</p>';document.getElementById('gf').appendChild(f);f.querySelector('#gs').onclick=async()=>{const bl=blocked();if(bl){alert(bl);return}const file=f.querySelector('#gp').files[0];if(!file)return;try{if(!file.type.startsWith('image/')){alert('Можно загружать только фото.');return}const durl=await fit(file,900);const ts=Date.now();await db.collection('gal').doc(ts+'-'+Math.random().toString(36).slice(2,6)).set({url:durl,ct:'image/jpeg',n:f.querySelector('#gn').value.trim(),by:uid,ts});f.querySelector('#gp').value='';f.querySelector('#gn').value=''}catch(e){alert('Не удалось загрузить файл (до 20 МБ).')}};const u=db.collection('gal').orderBy('ts').limit(100).onSnapshot(s=>{const el=document.getElementById('gl');if(!el)return;const ds=s.docs.map(d=>({id:d.id,...d.data()})).reverse();el.innerHTML=ds.map(d=>{const c=d.ct||'';const m=c.startsWith('video')?`<video src="${esc(d.url)}" controls style="max-width:100%"></video>`:c.startsWith('image')?`<img src="${esc(d.url)}" alt="" style="max-width:100%;border-radius:8px">`:`<a href="${esc(d.url)}" target="_blank" rel="noopener">Открыть файл</a>`;return `<div class="card">${m}<div>${esc(d.n)}</div><span class="mu">${esc(nameOf(d.by))}</span>${canEdit?` <button class="g" data-x="${d.id}">Удалить</button>`:''}</div>`}).join('')||'<p class="mu">Пока пусто.</p>';el.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>db.collection('gal').doc(b.dataset.x).delete())},()=>{});unsub.push(u)}
+function toast(m){let t=document.getElementById('ts');if(!t){t=document.createElement('div');t.id='ts';t.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--sf);border:1px solid var(--ac);padding:10px 14px;z-index:200;font-size:14px';document.body.appendChild(t)}t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none'},5000)}
+var NET=true;
+function setNet(ok){const was=NET;NET=ok;const b=document.getElementById('nb');if(b){b.className='tag '+(ok?'up':'dn');b.textContent=ok?'● онлайн':'○ нет сети';b.title=ok?'Подключение есть':'Нет подключения: работают сохранённые статьи'}if(was&&!ok)toast('Нет сети: работают сохранённые статьи.');if(!was&&ok){toast('Сеть вернулась.');beat()}}
+async function pingNet(){let ok=false;try{const r=await fetch('manifest.json?ping=1&_='+Date.now(),{cache:'no-store'});ok=r.ok}catch(e){}
+ if(!ok&&navigator.onLine){try{await fetch('https://www.gstatic.com/generate_204?ping=1',{mode:'no-cors',cache:'no-store'});ok=true}catch(e){}}
+ setNet(ok)}
+addEventListener('online',pingNet);addEventListener('offline',()=>setNet(false));setInterval(pingNet,15000);pingNet();
+function setTk(a){document.getElementById('tk').innerHTML='<span>'+a.join('   ◆   ')+'</span>'}
+function syncLocal(){try{const p=JSON.parse(localStorage.getItem('ord_profile')||'null');if(p&&db&&uid)db.collection('members').doc(uid).get().then(d=>{if(!d.exists)db.collection('members').doc(uid).set(p)})}catch(e){}}
+function pageMemLocal(){const pf=document.getElementById('pf');let m={};try{m=JSON.parse(localStorage.getItem('ord_profile')||'{}')}catch(e){}
+ pf.innerHTML='<div class="card"><b>Ваш профиль</b> <span class="tag">на этом устройстве</span><p class="mu">Сообщество сейчас не подключено ('+(window.firebase?'настройка Firebase не завершена или нет связи':'Firebase не загрузился: сеть или доступ закрыт')+'). Профиль сохранится здесь и отправится онлайн, когда связь появится.</p><div class="row"><input id="pn" placeholder="Ваше имя" value="'+esc(m.name||'')+'"></div><div class="row"><label class="fb">📷 Выбрать фото<input id="pp" type="file" accept="image/*" hidden></label><span id="pv">'+(m.photo?'<img class="av" src="'+esc(m.photo)+'">':'')+'</span></div><textarea id="pb" rows="2" style="width:100%" placeholder="О себе">'+esc(m.bio||'')+'</textarea><div class="row"><button id="ps">Сохранить</button></div></div>';
+ pf.querySelector('#pp').onchange=async e=>{try{const d=await shrink(e.target.files[0]);document.getElementById('pv').innerHTML='<img class="av" src="'+d+'">'}catch(x){}};
+ pf.querySelector('#ps').onclick=async()=>{let photo=m.photo||'';const f=pf.querySelector('#pp').files[0];try{if(f)photo=await shrink(f)}catch(e){}
+  const p={name:pf.querySelector('#pn').value.trim()||'Участник',photo:photo,bio:pf.querySelector('#pb').value.trim(),joined:m.joined||Date.now()};
+  try{localStorage.setItem('ord_profile',JSON.stringify(p));toast('Профиль сохранён на этом устройстве.');renderMe()}catch(e){toast('Не удалось сохранить профиль.')}}}
+function adminList(col,box,fields,tpl,empty){const el=document.getElementById(box);if(!el)return;let eid=null;
+ const form=isOwner?'<div class="card"><b>Только для владельца</b>'+fields.map(f=>f[2]==='t'?'<textarea data-k="'+f[0]+'" rows="3" style="width:100%;margin-top:6px" placeholder="'+f[1]+'"></textarea>':'<input data-k="'+f[0]+'" style="width:100%;margin-top:6px" placeholder="'+f[1]+'">').join('')+'<div class="row"><button data-a="s">Добавить</button><button data-a="c" class="g" style="display:none">Отмена</button></div></div>':'';
+ el.innerHTML=form+'<div data-l="1"></div>';const lst=el.querySelector('[data-l]');
+ const sb=el.querySelector('[data-a="s"]'),cb=el.querySelector('[data-a="c"]');
+ const reset=()=>{eid=null;el.querySelectorAll('[data-k]').forEach(i=>i.value='');if(sb)sb.textContent='Добавить';if(cb)cb.style.display='none'};
+ if(sb){sb.onclick=async()=>{const o={};fields.forEach(f=>{o[f[0]]=el.querySelector('[data-k="'+f[0]+'"]').value.trim()});if(!o[fields[0][0]])return;
+   try{if(eid)await db.collection(col).doc(eid).update(o);else{o.ts=Date.now();o.by=uid;await db.collection(col).doc(o.ts+'-'+Math.random().toString(36).slice(2,6)).set(o)}reset()}catch(e){toast('Не удалось сохранить: войдите как владелец и проверьте правила базы.')}};
+  cb.onclick=reset}
+ if(!db||!uid){lst.innerHTML='<p class="mu">'+empty+'</p>';return}
+ const u=db.collection(col).orderBy('ts').limit(100).onSnapshot(s=>{const ds=s.docs.map(d=>({id:d.id,...d.data()})).reverse();
+  lst.innerHTML=ds.map(d=>'<div class="card">'+tpl(d)+(isOwner?'<div class="row"><button class="g" data-e="'+d.id+'">Править</button><button class="g" data-x="'+d.id+'">Удалить</button></div>':'')+'</div>').join('')||'<p class="mu">'+empty+'</p>';
+  lst.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const d=ds.find(x=>x.id===b.dataset.e);eid=d.id;fields.forEach(f=>{el.querySelector('[data-k="'+f[0]+'"]').value=d[f[0]]||''});sb.textContent='Сохранить';cb.style.display='';sb.scrollIntoView({block:'center'})});
+  lst.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Удалить запись?'))db.collection(col).doc(b.dataset.x).delete()})},()=>{lst.innerHTML='<p class="mu">Нет связи с базой.</p>'});unsub.push(u)}
+const NEWS_F=[['t','Заголовок'],['x','Текст новости','t']];
+const BOARD_F=[['t','Заголовок'],['x','Текст','t'],['r','Риск (необязательно)']];
+const nl=x=>esc(x||'').replace(/\n/g,'<br>');
+W.board.h='<p class="mu">Объявления и задания Ордена.</p><div id="bd"></div>';
+function boardInit(){adminList('board','bd',BOARD_F,d=>'<b>'+esc(d.t)+'</b><br>'+nl(d.x)+(d.r?' <span class="tag">риск: '+esc(d.r)+'</span>':''),'Пока объявлений нет.')}
+(function(){const o=homeFx;homeFx=function(){o();const hub=document.getElementById('hub');if(!hub)return;
+ hub.insertAdjacentHTML('beforebegin','<h2>Новости</h2><div id="nw"></div>'+(Object.keys(CP).length?'<h2>Страницы</h2><div class="hub">'+Object.keys(CP).map(x=>'<a class="card" href="#'+x+'"><b>'+esc(CP[x].t)+'</b></a>').join('')+'</div>':''));
+ adminList('news','nw',NEWS_F,d=>'<b>'+esc(d.t)+'</b> <span class="mu">'+new Date(d.ts).toLocaleDateString('ru')+'</span><br>'+nl(d.x),'Пока новостей нет.');
+ if(isOwner){const fx=document.getElementById('fx');if(fx){fx.insertAdjacentHTML('beforeend','<h2>Бегущая строка</h2><div id="tkm"></div>');adminList('ticker','tkm',[['x','Текст строки']],d=>esc(d.x),'Своих строк пока нет: показываются стандартные.')}}}})();
+var CP={},CPL=false;
+function cpBtn(k){return '<div class="row"><button class="g" onclick="pageNew(\''+k+'\')">✎ Править</button><button class="g" onclick="cpDel(\''+k+'\')">Удалить страницу</button></div>'}
+function pageCP(k){main.innerHTML='<h1>'+esc(CP[k].t)+'</h1>'+CP[k].h+(isOwner?cpBtn(k):'')}
+function cpDel(k){if(confirm('Удалить страницу?'))db.collection('cpages').doc(k).delete().then(()=>{delete CP[k];location.hash='#home'})}
+function pageNew(k){stopAll();if(!isOwner){main.innerHTML='<h1>Новая страница</h1><p class="card">Только для владельца: нажмите «Вход» и войдите своей Google-почтой.</p>';return}
+ const c=(k&&CP[k])?CP[k]:{};
+ main.innerHTML='<h1>'+(k?'Правка страницы':'Новая страница')+'</h1><div class="card"><input id="cid" placeholder="Адрес латиницей, например: novosti-1" value="'+esc(k||'')+'"'+(k?' readonly':'')+' style="width:100%;margin-bottom:6px"><input id="ct" placeholder="Название" value="'+esc(c.t||'')+'" style="width:100%;margin-bottom:6px"><textarea id="ch" rows="14" style="width:100%" placeholder="Текст страницы (можно с HTML)">'+esc(c.src||'')+'</textarea><div class="row"><button id="cs">Сохранить</button></div><p class="mu">Абзацы разделяйте пустой строкой. Таблицы и оформление можно писать HTML.</p></div>';
+ document.getElementById('cs').onclick=async()=>{const id=document.getElementById('cid').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');const t=document.getElementById('ct').value.trim();const src=document.getElementById('ch').value;
+  if(!id||!t){toast('Нужны адрес (латиницей) и название.');return}
+  if(!k&&(W[id]||CP[id]||['new','home','qa','fan','chat','gal','mem','dev'].includes(id)||id.slice(0,2)==='h-'||id.slice(0,2)==='c-')){toast('Такой адрес уже занят.');return}
+  const h=/</.test(src)?src:src.split(/\n{2,}/).map(p=>'<p>'+esc(p).replace(/\n/g,'<br>')+'</p>').join('');
+  try{await db.collection('cpages').doc(id).set({t:t,h:h,src:src,ts:Date.now()});CP[id]={t:t,h:h,src:src};location.hash='#'+id;route()}catch(e){toast('Не удалось сохранить: войдите как владелец и проверьте правила базы.')}}}
 const FB={apiKey:"ВСТАВЬТЕ",authDomain:"ВСТАВЬТЕ",projectId:"ВСТАВЬТЕ",appId:"ВСТАВЬТЕ"};
 const OWNER="ВАШ_EMAIL@gmail.com";
 var _L=false;
@@ -167,7 +217,7 @@ function pageDev(){main.innerHTML='<h1>Устройства</h1><div id="dl"></d
  if(!isOwner){main.innerHTML+='<p class="card">Только для владельца. Нажмите «Вход» и войдите своей Google-почтой.</p>';return}
  const u=db.collection('devices').orderBy('last').limit(200).onSnapshot(s=>{const el=document.getElementById('dl');if(!el)return;const ds=s.docs.map(d=>({id:d.id,...d.data()})).reverse();const now=Date.now();
   el.innerHTML='<p class="mu">Всего устройств: '+ds.length+'. На связи: '+ds.filter(d=>now-d.last<120000).length+'</p><div class="cg">'+ds.map(d=>{const on=now-d.last<120000;const m=members[d.uid];return '<div class="ci"><h4>'+(on?'● ':'○ ')+esc((m&&m.name)||d.name||'Устройство')+'</h4><p><span>Впервые</span>'+new Date(d.first||d.last).toLocaleString('ru')+'</p><p><span>Последний раз</span>'+new Date(d.last).toLocaleString('ru')+'</p><p><span>Устройство</span>'+esc(d.name||'')+'</p></div>'}).join('')+'</div>'},()=>{});unsub.push(u)}
-async function init(){route();
+async function init(){route();renderMe();document.getElementById('lg').onclick=()=>toast(window.firebase?'Настройка Firebase не завершена: вставьте ключи в index.html.':'Firebase не загрузился: проверьте сеть или доступ к сервису Google.');
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
  if(!window.firebase||FB.apiKey==='ВСТАВЬТЕ')return;
  try{firebase.initializeApp(FB);db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
@@ -179,12 +229,12 @@ async function init(){route();
    document.getElementById('lg').textContent=u.isAnonymous?'Вход':'Выйти';
    if(!_L){_L=true;
     db.collection('members').onSnapshot(s=>{members={};s.docs.forEach(d=>members[d.id]=d.data());renderMe()},()=>{});
-    db.collection('pages').onSnapshot(s=>{PG={};s.docs.forEach(d=>PG[d.id]=d.data().h);route()},()=>{});
+    db.collection('cpages').onSnapshot(s=>{CP={};s.docs.forEach(d=>CP[d.id]=d.data());CPL=true;route()},()=>{CPL=true});db.collection('pages').onSnapshot(s=>{PG={};s.docs.forEach(d=>PG[d.id]=d.data().h);route()},()=>{});
     db.collection('roles').onSnapshot(s=>{roles={};s.docs.forEach(d=>roles[d.id]=d.data());renderMe()},()=>{});
-    setInterval(beat,60000)}
-   beat();renderMe();route()});
+    db.collection('ticker').orderBy('ts').onSnapshot(s=>{const a=s.docs.map(d=>d.data().x).filter(Boolean);setTk(a.length?a:TK)},()=>{});setInterval(beat,60000)}
+   beat();syncLocal();renderMe();route()});
  }catch(e){}}
-function renderMe(){const m=members[uid];const el=document.getElementById('me');if(!uid){el.innerHTML='';return}
+function renderMe(){const m=members[uid];const el=document.getElementById('me');if(!uid){let p={};try{p=JSON.parse(localStorage.getItem('ord_profile')||'{}')}catch(e){}el.innerHTML='<a href="#mem">'+(p.name?esc(p.name):'Присоединиться')+'</a>';return}
  const ow=isOwner?' <span class="tag">владелец</span>':canEdit?' <span class="tag">админ</span>':'';el.innerHTML=(m?`${avOf(uid)}<a href="#mem">${esc(m.name)}</a>`:'<a href="#mem">Присоединиться</a>')+ow}
 init();
 </script></body></html>

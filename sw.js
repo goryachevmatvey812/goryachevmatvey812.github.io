@@ -1,4 +1,4 @@
-const C = 'orden-v1';
+const C = 'orden-v2';
 const BASE = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(BASE)).then(() => self.skipWaiting()));
@@ -10,6 +10,7 @@ self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET') return;
   const h = new URL(r.url).hostname;
+  if (r.url.includes('ping=1')) return; // проверка сети всегда идёт напрямую
   if (h.includes('firestore.googleapis.com') || h.includes('identitytoolkit') || h.includes('securetoken')) return;
   // Сначала сеть (чтобы обновления доходили сразу), без сети берём копию из кэша.
   e.respondWith(
