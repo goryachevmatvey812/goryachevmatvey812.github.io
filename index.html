@@ -205,8 +205,8 @@ function pageNew(k){stopAll();if(!isOwner){main.innerHTML='<h1>Новая стр
   if(!k&&(W[id]||CP[id]||['new','home','qa','fan','chat','gal','mem','dev'].includes(id)||id.slice(0,2)==='h-'||id.slice(0,2)==='c-')){toast('Такой адрес уже занят.');return}
   const h=/</.test(src)?src:src.split(/\n{2,}/).map(p=>'<p>'+esc(p).replace(/\n/g,'<br>')+'</p>').join('');
   try{await db.collection('cpages').doc(id).set({t:t,h:h,src:src,ts:Date.now()});CP[id]={t:t,h:h,src:src};location.hash='#'+id;route()}catch(e){toast('Не удалось сохранить: войдите как владелец и проверьте правила базы.')}}}
-const FB={apiKey:"ВСТАВЬТЕ",authDomain:"ВСТАВЬТЕ",projectId:"ВСТАВЬТЕ",appId:"ВСТАВЬТЕ"};
-const OWNER="ВАШ_EMAIL@gmail.com";
+const FB={apiKey:"AIzaSyCd4YGfhtlEDnuWqkXCQrW4_lLwwTGEu2M",authDomain:"orden-carstvie.firebaseapp.com",projectId:"orden-carstvie",storageBucket:"orden-carstvie.firebasestorage.app",messagingSenderId:"504085056619",appId:"1:504085056619:web:338d1c10d4ad0c7114f52e"};
+const OWNER="goryachevmatvey812@gmail.com";
 var _L=false;
 function devId(){let i='';try{i=localStorage.getItem('ord_dev')||'';if(!i){i='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);localStorage.setItem('ord_dev',i)}}catch(e){i='d'+Math.random().toString(36).slice(2,10)}return i}
 function devFirst(){let f=Date.now();try{const v=localStorage.getItem('ord_first');if(v)f=+v;else localStorage.setItem('ord_first',String(f))}catch(e){}return f}
