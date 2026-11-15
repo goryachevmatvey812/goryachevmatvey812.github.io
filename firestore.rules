@@ -3,11 +3,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signed() { return request.auth != null; }
-    // ЗАМЕНИТЕ на вашу Google-почту (та же, что в index.html, константа OWNER)
+
+    // Владелец: ваша Google-почта (та же, что в index.html, константа OWNER)
     function admin() {
       return signed()
-        && request.auth.token.email == 'ВАШ_EMAIL@gmail.com'
+        && request.auth.token.email == 'goryachevmatvey812@gmail.com'
         && request.auth.token.email_verified == true;
+    }
+
+    // Полномочия роли, которую выдал владелец (roles/{uid}.rid -> roleDefs/{rid}.perms)
+    function rolePerm(p) {
+      return signed()
+        && exists(/databases/$(database)/documents/roles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.get('rid', '') != ''
+        && exists(/databases/$(database)/documents/roleDefs/$(get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.rid))
+        && get(/databases/$(database)/documents/roleDefs/$(get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.rid)).data.perms.get(p, false) == true;
     }
 
     // Устройства: пишет любое устройство, читает только владелец
@@ -17,10 +27,22 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
-    // Роли, муты, баны, благодарности: читают вошедшие, меняет только владелец
+    // Выданные роли, муты, баны, благодарности: читают вошедшие, меняет владелец
     match /roles/{id} {
       allow read: if signed();
       allow write: if admin();
+    }
+
+    // Описания ролей (название, тег, цвет, картинка, полномочия): читают все, создаёт владелец
+    match /roleDefs/{id} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Обращения в администрацию: пишет любой вошедший, читает и удаляет владелец
+    match /reports/{id} {
+      allow create: if signed() && request.resource.data.by == request.auth.uid;
+      allow read, delete: if admin();
     }
 
     // Правки страниц сайта: читают все, пишет владелец
@@ -35,10 +57,11 @@ service cloud.firestore {
       allow write: if admin() || (signed() && request.auth.uid == id);
     }
 
-    // Новости, объявления, бегущая строка: читают все, пишет владелец
+    // Новости, объявления, бегущая строка (и роль с правом «публиковать»), свои страницы (только владелец)
     match /{col}/{id} {
       allow read: if col in ['news', 'board', 'ticker', 'cpages'];
-      allow write: if col in ['news', 'board', 'ticker', 'cpages'] && admin();
+      allow write: if (col in ['news', 'board', 'ticker'] && (admin() || rolePerm('news')))
+        || (col == 'cpages' && admin());
     }
 
     // Вопросы, творчество, чат, галерея
@@ -46,9 +69,10 @@ service cloud.firestore {
       allow read: if col in ['qa', 'fan', 'chat', 'gal'];
       allow create: if col in ['qa', 'fan', 'chat', 'gal']
         && signed() && request.resource.data.by == request.auth.uid;
-      allow update: if col in ['qa', 'fan', 'chat', 'gal'] && admin();
+      allow update: if col in ['qa', 'fan', 'chat', 'gal']
+        && (admin() || (col == 'qa' && rolePerm('answer')));
       allow delete: if col in ['qa', 'fan', 'chat', 'gal']
-        && (admin() || resource.data.by == request.auth.uid);
+        && (admin() || rolePerm('del') || resource.data.by == request.auth.uid);
     }
   }
 }
