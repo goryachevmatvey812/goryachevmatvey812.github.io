@@ -33,6 +33,12 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    // Каналы и чаты внутри каналов: читают все, создаёт владелец или роль с правом «создавать каналы и чаты»
+    match /{col}/{id} {
+      allow read: if col in ['chans', 'rooms'];
+      allow write: if col in ['chans', 'rooms'] && (admin() || rolePerm('rooms'));
+    }
+
     // Описания ролей (название, тег, цвет, картинка, полномочия): читают все, создаёт владелец
     match /roleDefs/{id} {
       allow read: if true;

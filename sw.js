@@ -1,4 +1,4 @@
-const C = 'orden-v2';
+const C = 'orden-v3';
 const BASE = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(BASE)).then(() => self.skipWaiting()));
@@ -20,4 +20,13 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => caches.match(r).then(m => m || caches.match('index.html')))
   );
+});
+
+// Нажатие на уведомление открывает сайт (чат)
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    return clients.openWindow('./#chat');
+  }));
 });
