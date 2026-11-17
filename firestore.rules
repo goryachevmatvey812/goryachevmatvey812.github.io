@@ -11,66 +11,137 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
-    // Полномочия роли, которую выдал владелец (roles/{uid}.rid -> roleDefs/{rid}.perms)
+    // Полномочия из ролей, которые выдал владелец (сайт сам записывает их в roles/{uid}.perms)
     function rolePerm(p) {
       return signed()
         && exists(/databases/$(database)/documents/roles/$(request.auth.uid))
-        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.get('rid', '') != ''
-        && exists(/databases/$(database)/documents/roleDefs/$(get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.rid))
-        && get(/databases/$(database)/documents/roleDefs/$(get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.rid)).data.perms.get(p, false) == true;
+        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.get('perms', {}).get(p, false) == true;
     }
 
-    // Устройства: пишет любое устройство, читает только владелец
+    // Участник личного/приватного чата
+    function pMember(cid) {
+      return signed()
+        && exists(/databases/$(database)/documents/pchans/$(cid))
+        && request.auth.uid in get(/databases/$(database)/documents/pchans/$(cid)).data.members;
+    }
+
+    // Можно ли написать этому человеку в личные сообщения
+    function dmOk(pair) {
+      let p = pair.split('_');
+      let o = p[0] == request.auth.uid ? p[1] : p[0];
+      return (!exists(/databases/$(database)/documents/members/$(o))
+              || get(/databases/$(database)/documents/members/$(o)).data.get('dmOpen', true) == true)
+        && (!exists(/databases/$(database)/documents/prefs/$(o))
+              || !(request.auth.uid in get(/databases/$(database)/documents/prefs/$(o)).data.get('blocked', [])));
+    }
+
+    // Устройства
     match /devices/{id} {
       allow read: if admin();
       allow create, update: if signed();
       allow delete: if admin();
     }
 
-    // Выданные роли, муты, баны, благодарности: читают вошедшие, меняет владелец
+    // Выданные роли, должности, муты, баны, благодарности
     match /roles/{id} {
       allow read: if signed();
       allow write: if admin();
     }
 
-    // Каналы и чаты внутри каналов: читают все, создаёт владелец или роль с правом «создавать каналы и чаты»
-    match /{col}/{id} {
-      allow read: if col in ['chans', 'rooms'];
-      allow write: if col in ['chans', 'rooms'] && (admin() || rolePerm('rooms'));
-    }
-
-    // Описания ролей (название, тег, цвет, картинка, полномочия): читают все, создаёт владелец
+    // Описания ролей
     match /roleDefs/{id} {
       allow read: if true;
       allow write: if admin();
     }
 
-    // Обращения в администрацию: пишет любой вошедший, читает и удаляет владелец
+    // Предупреждения: видит владелец и сам человек
+    match /sanc/{id} {
+      allow read: if admin() || (signed() && request.auth.uid == id);
+      allow write: if admin();
+    }
+
+    // Журнал действий владельца
+    match /logs/{id} {
+      allow read, write: if admin();
+    }
+
+    // Личные настройки (список заблокированных)
+    match /prefs/{id} {
+      allow read, write: if signed() && request.auth.uid == id;
+    }
+
+    // Обращения в администрацию
     match /reports/{id} {
       allow create: if signed() && request.resource.data.by == request.auth.uid;
       allow read, delete: if admin();
     }
 
-    // Правки страниц сайта: читают все, пишет владелец
+    // Правки страниц сайта
     match /pages/{id} {
       allow read: if true;
       allow write: if admin();
     }
 
-    // Профили: читают все, свой профиль меняет сам человек
+    // Публичная часть профиля (имя, фото, роли, флаги «открыт»)
     match /members/{id} {
       allow read: if true;
       allow write: if admin() || (signed() && request.auth.uid == id);
     }
 
-    // Новости, объявления, бегущая строка (и роль с правом «публиковать»), свои страницы (только владелец)
+    // Подробный профиль (о себе, шапка): читать могут все, если профиль открыт
+    match /profiles/{id} {
+      allow read: if resource == null
+        || resource.data.get('open', true) == true
+        || (signed() && request.auth.uid == id)
+        || admin();
+      allow write: if admin() || (signed() && request.auth.uid == id);
+    }
+
+    // Личные сообщения: dms/{пара}/msgs, пара = два uid через «_»
+    match /dms/{pair}/msgs/{m} {
+      allow read: if signed() && request.auth.uid in pair.split('_');
+      allow create: if signed() && request.auth.uid in pair.split('_')
+        && request.resource.data.by == request.auth.uid && dmOk(pair);
+      allow delete: if admin() || (signed() && resource.data.by == request.auth.uid);
+    }
+
+    // Список личных диалогов: inbox/{uid}/t/{пара}
+    match /inbox/{u}/t/{pair} {
+      allow read: if signed() && request.auth.uid == u;
+      allow write: if signed() && request.auth.uid in pair.split('_') && u in pair.split('_');
+    }
+
+    // Приватные каналы
+    match /pchans/{cid} {
+      allow read: if admin() || (signed() && request.auth.uid in resource.data.members);
+      allow create: if signed() && (admin() || rolePerm('rooms'));
+      allow update, delete: if admin() || (signed() && resource.data.by == request.auth.uid);
+    }
+    match /pchans/{cid}/rooms/{rid} {
+      allow read: if admin() || pMember(cid);
+      allow write: if admin() || (pMember(cid) && (rolePerm('rooms')
+        || get(/databases/$(database)/documents/pchans/$(cid)).data.by == request.auth.uid));
+    }
+    match /pchans/{cid}/rooms/{rid}/msgs/{m} {
+      allow read: if admin() || pMember(cid);
+      allow create: if pMember(cid) && request.resource.data.by == request.auth.uid;
+      allow delete: if admin() || (pMember(cid) && (resource.data.by == request.auth.uid || rolePerm('del')));
+    }
+
+    // Каналы и чаты общего пространства
+    match /{col}/{id} {
+      allow read: if col in ['chans', 'rooms'];
+      allow write: if col in ['chans', 'rooms'] && (admin() || rolePerm('rooms'));
+    }
+
+    // Новости, объявления, бегущая строка, свои страницы
     match /{col}/{id} {
       allow read: if col in ['news', 'board', 'ticker', 'cpages'];
       allow write: if (col in ['news', 'board', 'ticker'] && (admin() || rolePerm('news')))
         || (col == 'cpages' && admin());
     }
 
-    // Вопросы, творчество, чат, галерея
+    // Вопросы, творчество, общий чат, галерея
     match /{col}/{id} {
       allow read: if col in ['qa', 'fan', 'chat', 'gal'];
       allow create: if col in ['qa', 'fan', 'chat', 'gal']
