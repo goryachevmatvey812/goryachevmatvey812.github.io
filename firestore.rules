@@ -131,6 +131,26 @@ service cloud.firestore {
       allow write: if signed() && request.auth.uid in pair.split('_') && u in pair.split('_');
     }
 
+    // Звонки: сигналы WebRTC (кто кому звонит), видят только двое участников
+    function callOk(to) {
+      return (!exists(/databases/$(database)/documents/members/$(to))
+              || get(/databases/$(database)/documents/members/$(to)).data.get('dmOpen', true) == true)
+        && (!exists(/databases/$(database)/documents/prefs/$(to))
+              || !(request.auth.uid in get(/databases/$(database)/documents/prefs/$(to)).data.get('blocked', [])));
+    }
+    match /calls/{id} {
+      allow read: if signed() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if signed() && request.resource.data.from == request.auth.uid && callOk(request.resource.data.to);
+      allow update: if signed() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow delete: if signed() && resource.data.from == request.auth.uid;
+    }
+    match /calls/{id}/ice/{c} {
+      allow read, create, delete: if signed()
+        && exists(/databases/$(database)/documents/calls/$(id))
+        && (get(/databases/$(database)/documents/calls/$(id)).data.from == request.auth.uid
+            || get(/databases/$(database)/documents/calls/$(id)).data.to == request.auth.uid);
+    }
+
     match /pchans/{cid} {
       allow read: if admin() || (signed() && request.auth.uid in resource.data.members);
       allow create: if signed() && (admin() || rolePerm('priv') || rolePerm('rooms'));
