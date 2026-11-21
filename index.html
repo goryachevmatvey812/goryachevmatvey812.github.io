@@ -1,4 +1,4 @@
-<!doctype html>
+MISS: patch-block MISS: init-boot OK: beat MISS: beat-ver MISS: init-boot OK: FB @ 103853 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Орден — энциклопедия</title>
@@ -305,6 +305,14 @@ function selfRoles(cur){return '<div class="row"><span class="mu">'+L('myrole')+
 function rdOpts(cur){return '<option value="">'+L('norole')+'</option>'+Object.keys(RD).map(k=>'<option value="'+k+'"'+(cur===k?' selected':'')+'>'+esc(RD[k].name)+'</option>').join('')}
 function refreshChat(){if(CHATR&&document.getElementById('cm'))CHATR()}
 function watch(col,title){let first=true;db.collection(col).orderBy('ts').limitToLast(1).onSnapshot(s=>{if(first){first=false;return}s.docChanges().forEach(c=>{if(c.type!=='added')return;const d=c.doc.data();if(d.by===uid)return;if(col==='chat'&&location.hash==='#chat'&&!document.hidden)return;notify(title,(d.t?d.t+': ':'')+((d.x||(d.aud?'🎤':'📷'))))})},()=>{})}
+/* === ОБНОВЛЕНИЯ И PUSH (вставка, исходный код сайта ниже не меняется) === */
+async function verCheck(){try{const r=await fetch('version.json?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();APP_VER_LIVE=String(j.version||'').trim();if(APP_VER_LIVE&&APP_VER_LIVE!==APP_VER)showUpd()}catch(e){}}
+function showUpd(){if(document.getElementById('upd'))return;const d=document.createElement('div');d.id='upd';d.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:210;background:var(--sf);border:1px solid var(--ac);padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center';d.innerHTML='<span style="flex:1">Доступно обновление ('+esc(APP_VER_LIVE)+').</span><button id="upd-y">Обновить</button><button class="g" id="upd-n">Позже</button>';document.body.appendChild(d);d.querySelector('#upd-n').onclick=()=>d.remove();d.querySelector('#upd-y').onclick=()=>applyUpd(d)}
+async function applyUpd(d){const b=d.querySelector('#upd-y');if(b)b.textContent='…';try{const reg=await navigator.serviceWorker.getRegistration();if(!reg){location.reload();return}await reg.update();const w=reg.installing||reg.waiting;let done=0;const go=()=>{if(done)return;done=1;if(navigator.serviceWorker.controller){navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});setTimeout(()=>{if(done===1)location.reload()},1500)}else location.reload()};if(reg.waiting)go();else if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')go()});else setTimeout(()=>location.reload(),800)}catch(e){location.reload()}}
+async function boot(){try{const r=await fetch('version.json?_='+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();if(j.version)APP_VER=String(j.version).trim()}}catch(e){}if('serviceWorker' in navigator){try{const reg=await navigator.serviceWorker.register('sw.js');reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller){APP_VER_LIVE=APP_VER_LIVE||'new';showUpd()}})});reg.update&&reg.update().catch(()=>{})}catch(e){}}verCheck();setInterval(verCheck,600000);addEventListener('online',verCheck);pushInit()}
+async function pushInit(){if(!db||!uid||S.push===false)return;try{if(!('serviceWorker' in navigator)||!('Notification' in window))return;if(Notification.permission!=='granted')return;const sc=await navigator.serviceWorker.ready;const r=await fetch('firebase-messaging-sw.js',{cache:'no-store'}).catch(()=>null);if(!r||!r.ok)return;const cfg=await db.collection('config').doc('push').get().catch(()=>null);if(!cfg||!cfg.exists||!cfg.data().key)return;const sub=await sc.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(cfg.data().key)});await db.collection('pushtok').doc(uid).set({list:firebase.firestore.FieldValue.arrayUnion({t:JSON.stringify(sub),d:devId(),ts:Date.now()})},{merge:true})}catch(e){}}
+function urlB64(s){s=(s||'').replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const raw=atob(s),u=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)u[i]=raw.charCodeAt(i);return u}
+window.ordenApp={ver:()=>APP_VER,live:()=>APP_VER_LIVE,check:verCheck,reload:()=>location.reload()};
 function modal(html){let d=document.getElementById('md2');if(d)d.remove();d=document.createElement('div');d.id='md2';d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';d.innerHTML='<div class="card" style="max-width:440px;width:100%;margin:0">'+html+'<div class="row"><button class="g" id="mclose">'+L('close')+'</button></div></div>';document.body.appendChild(d);d.querySelector('#mclose').onclick=()=>d.remove();return d}
 function openHelp(){const d=modal('<b>'+L('help')+'</b><p class="mu">'+L('helpIntro')+'</p><textarea id="hx" rows="4" style="width:100%" placeholder="'+L('helpPh')+'"></textarea><p id="hs" class="mu"></p><div class="row"><button id="hb">'+L('helpSend')+'</button></div>');
  d.querySelector('#hb').onclick=async()=>{const x=d.querySelector('#hx').value.trim(),st=d.querySelector('#hs');if(!x)return;if(!db||!uid){st.textContent=L('nonet');return}const ts=Date.now();try{await db.collection('reports').doc(ts+'-'+Math.random().toString(36).slice(2,6)).set({x:x,by:uid,ts:ts,page:location.hash||'#home',ua:navigator.userAgent.slice(0,120)});st.textContent=L('helpSent');d.querySelector('#hx').value=''}catch(e){st.textContent=L('nonet')}}}
@@ -327,12 +335,13 @@ function pageRep(){stopAll();main.innerHTML='<h1>'+L('reports')+'</h1><div id="r
   el.innerHTML=ds.map(d=>'<div class="card">'+nameHtml(d.by)+' <span class="mu">'+new Date(d.ts).toLocaleString('ru')+' · '+esc(d.page||'')+'</span><div>'+fmt(d.x)+'</div><p class="mu">'+esc(d.ua||'')+'</p><button class="g" data-x="'+d.id+'">'+L('del')+'</button></div>').join('')||'<p class="mu">—</p>';
   el.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>db.collection('reports').doc(b.dataset.x).delete())},()=>{});unsub.push(u)}
 const FB={apiKey:"AIzaSyCd4YGfhtlEDnuWqkXCQrW4_lLwwTGEu2M",authDomain:"orden-carstvie.firebaseapp.com",projectId:"orden-carstvie",storageBucket:"orden-carstvie.firebasestorage.app",messagingSenderId:"504085056619",appId:"1:504085056619:web:338d1c10d4ad0c7114f52e"};
+var APP_VER="0.0.0",APP_VER_LIVE="",_UPD=null;
 const OWNER="goryachevmatvey812@gmail.com";
 var _L=false;
 function devId(){let i='';try{i=localStorage.getItem('ord_dev')||'';if(!i){i='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);localStorage.setItem('ord_dev',i)}}catch(e){i='d'+Math.random().toString(36).slice(2,10)}return i}
 function devFirst(){let f=Date.now();try{const v=localStorage.getItem('ord_first');if(v)f=+v;else localStorage.setItem('ord_first',String(f))}catch(e){}return f}
 function devName(){const u=navigator.userAgent;const m=u.match(/Android[^;)]*;\s*([^;)]+)/)||u.match(/\((iPhone|iPad|Macintosh|Windows[^;)]*|X11[^;)]*|Linux[^;)]*)/);return m?m[1].trim():'Устройство'}
-function beat(){if(!db||!uid)return;try{db.collection('devices').doc(devId()).set({uid:uid,name:devName(),ua:navigator.userAgent.slice(0,160),last:Date.now(),first:devFirst()},{merge:true})}catch(e){}}
+function beat(){if(!db||!uid)return;try{db.collection('devices').doc(devId()).set({uid:uid,name:devName(),ua:navigator.userAgent.slice(0,160),last:Date.now(),first:devFirst(),ver:APP_VER},{merge:true});pushTok()}catch(e){}}
 function fit(file,max){return new Promise((ok,no)=>{const fr=new FileReader();fr.onerror=no;fr.onload=()=>{const im=new Image();im.onerror=no;im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.8))};im.src=fr.result};fr.readAsDataURL(file)})}
 function pageDev(){main.innerHTML='<h1>Устройства</h1><div id="dl"></div>';if(!db||!uid){main.innerHTML+='<p class="card">Нет связи с базой. Проверьте интернет.</p>';return}
  if(!can('viewdevs')){main.innerHTML+='<p class="card">Нет доступа. Нажмите «Вход» и войдите своей Google-почтой.</p>';return}
@@ -352,7 +361,7 @@ async function init(){applyLang();route();renderMe();document.getElementById('lg
     db.collection('members').onSnapshot(s=>{members={};s.docs.forEach(d=>members[d.id]=d.data());renderMe();calcPerms();refreshChat()},()=>{});
     db.collection('cpages').onSnapshot(s=>{CP={};s.docs.forEach(d=>CP[d.id]=d.data());CPL=true;route()},()=>{CPL=true});db.collection('pages').onSnapshot(s=>{PG={};s.docs.forEach(d=>PG[d.id]=d.data().h);route()},()=>{});
     db.collection('roles').onSnapshot(s=>{roles={};s.docs.forEach(d=>roles[d.id]=d.data());renderMe();calcPerms();refreshChat()},()=>{});
-    db.collection('ticker').orderBy('ts').onSnapshot(s=>{const a=s.docs.map(d=>d.data().x).filter(Boolean);setTk(a.length?a:TK)},()=>{});db.collection('roleDefs').onSnapshot(s=>{RD={};s.docs.forEach(d=>RD[d.id]=d.data());calcPerms();refreshChat();renderMe()},()=>{});watchChat();db.collection('chans').onSnapshot(s=>{CHN={};s.docs.forEach(d=>CHN[d.id]=d.data());refreshChat()},()=>{});db.collection('rooms').onSnapshot(s=>{RMS={};s.docs.forEach(d=>RMS[d.id]=d.data());refreshChat()},()=>{});watch('news','📰');startV3();setInterval(beat,60000)}
+    db.collection('ticker').orderBy('ts').onSnapshot(s=>{const a=s.docs.map(d=>d.data().x).filter(Boolean);setTk(a.length?a:TK)},()=>{});db.collection('roleDefs').onSnapshot(s=>{RD={};s.docs.forEach(d=>RD[d.id]=d.data());calcPerms();refreshChat();renderMe()},()=>{});watchChat();db.collection('chans').onSnapshot(s=>{CHN={};s.docs.forEach(d=>CHN[d.id]=d.data());refreshChat()},()=>{});db.collection('rooms').onSnapshot(s=>{RMS={};s.docs.forEach(d=>RMS[d.id]=d.data());refreshChat()},()=>{});if(typeof boot==='function')setTimeout(boot,1500);watch('news','📰');startV3();setInterval(beat,60000)}
    beat();syncLocal();renderMe();route()});
  }catch(e){}}
 function renderMe(){const m=members[uid];const el=document.getElementById('me');if(!uid){let p={};try{p=JSON.parse(localStorage.getItem('ord_profile')||'{}')}catch(e){}el.innerHTML='<a href="#mem">'+(p.name?esc(p.name):'Присоединиться')+'</a>';return}
@@ -369,7 +378,7 @@ document.addEventListener('pointerdown',ac,{once:true});
 function beep(k){try{const c=ac();if(!c)return;const v=(S.vol==null?60:S.vol)/100*.3;const seq={a:[[880,0,.12],[1175,.14,.2]],b:[[523,0,.1],[392,.12,.22]],c:[[660,0,.22]],m:[[988,0,.1],[988,.14,.1],[1319,.28,.28]]}[k||S.snd||'a']||[[660,0,.2]];seq.forEach(x=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+x[1];o.type='sine';o.frequency.value=x[0];g.gain.setValueAtTime(Math.max(v,.0002),t);g.gain.exponentialRampToValueAtTime(.0001,t+x[2]);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+x[2]+.02)})}catch(e){}}
 function notify(t,b,strong){if(!S.notif)return;const body=String(b).slice(0,120);toast(t+': '+body.slice(0,90));if(S.sound)beep(strong?'m':null);if(S.vib&&navigator.vibrate){try{navigator.vibrate(strong?[120,60,120]:80)}catch(e){}}
  if(document.hidden){UNR++;document.title='('+UNR+') '+BASET;if('Notification' in window&&Notification.permission==='granted'){const o={body:body,icon:'icon-192.png',badge:'icon-192.png',tag:'orden'+(strong?'m':''),renotify:true};try{if(navigator.serviceWorker&&navigator.serviceWorker.ready){navigator.serviceWorker.ready.then(r=>r.showNotification(t,o)).catch(()=>{try{new Notification(t,o)}catch(e){}})}else{new Notification(t,o)}}catch(e){}}}}
-function openSettings(){const d=modal('<b>⚙ '+L('settings')+'</b><p class="mu">'+L('lang')+'</p><select id="sl"><option value="ru">Русский</option><option value="en">English</option></select><p><label><input type="checkbox" id="sn"> '+L('notifOn')+'</label></p><p><label><input type="checkbox" id="smn"> '+L('mentOnly')+'</label></p><p><label><input type="checkbox" id="ss"> '+L('sound')+'</label></p><p class="mu">'+L('sndType')+'</p><select id="st2"><option value="a">'+L('sndA')+'</option><option value="b">'+L('sndB')+'</option><option value="c">'+L('sndC')+'</option></select> <button class="g" id="sts">▶</button><p class="mu">'+L('vol')+'</p><input type="range" id="sv" min="0" max="100" style="width:100%"><p><label><input type="checkbox" id="sb2"> '+L('vib')+'</label></p><p class="mu">'+L('bgNote')+'</p><div class="row"><button id="sh">'+L('help')+'</button></div><p class="mu">'+L('fmt')+':<br>'+esc(L('fmtHelp'))+'</p>');
+function openSettings(){const d=modal('<b>⚙ '+L('settings')+'</b><p><button id="st-dl">📥 Скачать приложение</button></p><p class="mu">'+L('lang')+'</p><select id="sl"><option value="ru">Русский</option><option value="en">English</option></select><p><label><input type="checkbox" id="sn"> '+L('notifOn')+'</label></p><p><label><input type="checkbox" id="smn"> '+L('mentOnly')+'</label></p><p><label><input type="checkbox" id="ss"> '+L('sound')+'</label></p><p class="mu">'+L('sndType')+'</p><select id="st2"><option value="a">'+L('sndA')+'</option><option value="b">'+L('sndB')+'</option><option value="c">'+L('sndC')+'</option></select> <button class="g" id="sts">▶</button><p class="mu">'+L('vol')+'</p><input type="range" id="sv" min="0" max="100" style="width:100%"><p><label><input type="checkbox" id="sb2"> '+L('vib')+'</label></p><p class="mu">'+L('bgNote')+'</p><div class="row"><button id="sh">'+L('help')+'</button></div><p class="mu">'+L('fmt')+':<br>'+esc(L('fmtHelp'))+'</p>');
  const q=i=>d.querySelector(i);q('#sl').value=S.lang;q('#sn').checked=!!S.notif;q('#smn').checked=!!S.mentionOnly;q('#ss').checked=!!S.sound;q('#st2').value=S.snd||'a';q('#sv').value=S.vol==null?60:S.vol;q('#sb2').checked=!!S.vib;
  q('#sl').onchange=()=>{S.lang=q('#sl').value;saveS();applyLang();route();openSettings()};
  q('#sn').onchange=async()=>{S.notif=q('#sn').checked;saveS();if(S.notif&&'Notification' in window&&Notification.permission==='default'){try{await Notification.requestPermission()}catch(e){}}};
@@ -380,6 +389,40 @@ function openSettings(){const d=modal('<b>⚙ '+L('settings')+'</b><p class="mu"
  q('#sv').onchange=()=>{S.vol=+q('#sv').value;saveS();beep()};
  q('#sb2').onchange=()=>{S.vib=q('#sb2').checked;saveS();if(S.vib&&navigator.vibrate){try{navigator.vibrate(80)}catch(e){}}};
  q('#sh').onclick=()=>{d.remove();openHelp()}}
+ q('#st-dl').onclick=()=>{d.remove();openDownload()}
+function dlHtml(){
+ const base=location.href.replace(/[#?].*$/,'');
+ let h='<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Орден — офлайн-копия</title><link rel="manifest" href="'+(base||'./')+'manifest.json"></head><body style="margin:0;background:#0a0a0c;color:#e0e0e0;font:14px system-ui"><div id="sb" style="position:sticky;top:0;z-index:5;background:#13141a;border-bottom:1px solid #2a2d34;padding:8px 12px;font:12px ui-monospace,monospace">Офлайн-копия Ордена · '+(APP_VER||'')+' · <a style="color:#c0392b;text-decoration:none" target="_blank" rel="noopener" href="'+(base||'./')+'">открыть онлайн-версию</a></div><iframe id="fr" style="position:fixed;left:0;top:34px;width:100%;height:calc(100% - 34px);border:0" allow="microphone; clipboard-write"></iframe></body></html>';
+ return h;
+}
+function openDownload(){
+ const cn='${base}';
+ const ua=navigator.userAgent;
+ const isAndroid=/Android/i.test(ua);
+ const isWin=/Windows/i.test(ua);
+ let m='<b>📥 Скачать</b><p class="mu">Одна база: сайт, приложение ПК и Android читают и пишут в один Firebase. Написавший на сайте виден на телефоне и на ПК.</p>';
+ m+='<div class="card" style="margin:10px 0"><b>Приложения Ордена</b><p class="mu">Установщики лежат в папке /app сайта.</p>'+
+   '<div class="row"><a class="fb" style="text-decoration:none" href="app/Orden-Setup.exe" download>🖥 ПК · Windows</a><a class="fb" style="text-decoration:none" href="app/Orden.dmg" download>🖥 Mac</a><a class="fb" style="text-decoration:none" href="app/Orden.AppImage" download>🐧 Linux</a><a class="fb" style="text-decoration:none" href="app/Orden.apk" download>🤖 Android APK</a></div>'+
+   '<p class="mu">'+(isWin?'Ваша система — Windows: скачайте Orden-Setup.exe, запустите, установите.':isAndroid?'Вы на Android: скачайте APK, разрешите установку из неизвестных источников.':'Понравившееся приложение откроется у вас после установки.')+'</p></div>';
+ m+='<div class="card" style="margin:10px 0"><b>Установить сайт как приложение</b><p class="mu">Без установки файлов: та же база и push (пока вкладка свёрнута).</p><div class="row"><button id="d-pwa">📲 Установить на это устройство</button><button class="g" id="d-html">💾 Сохранить HTML (офлайн)</button></div></div>';
+ m+='<div class="card" style="margin:10px 0"><b>Офлайн-копия</b><p class="mu">Файл Orden.html открывается без интернета и показывает статьи. Чат и база — только при связи.</p></div>';
+ m+='<div class="card" style="margin:10px 0"><b>Обновления</b><p class="mu">Версия сайта: '+(APP_VER||'—')+'. Когда на сайте новая версия, в приложениях появляется «Обновить». Сейчас: '+(APP_VER_LIVE&&APP_VER_LIVE!==APP_VER?'доступна '+APP_VER_LIVE:'актуальная')+'.</p><div class="row"><button class="g" id="d-chk">Проверить обновления</button><button class="g" id="d-rel">Обновить сейчас</button></div></div>';
+ const d=modal(m);
+ const q=s=>d.querySelector(s);
+ if(q('#d-pwa'))q('#d-pwa').onclick=async()=>{
+   if(window._bip){window._bip.prompt();try{await window._bip.userChoice}catch(e){}window._bip=null;return}
+   if(/iPhone|iPad|Safari/i.test(ua)&&!/Chrome/i.test(ua)){alert('Safari: нажмите «Поделиться» → «На экран Домой».');return}
+   alert('Откройте меню браузера (⋮) → «Установить приложение» или «Добавить на главный экран».');
+ };
+ if(q('#d-html'))q('#d-html').onclick=()=>{
+   const b=new Blob([dlHtml()],{type:'text/html;charset=utf-8'});
+   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Orden.html';document.body.appendChild(a);a.click();
+   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+ };
+ if(q('#d-chk'))q('#d-chk').onclick=async()=>{await verCheck();alert(APP_VER_LIVE?(APP_VER_LIVE===APP_VER?'У вас актуальная версия '+APP_VER+'.':'Доступна версия '+APP_VER_LIVE+'.'):'Не удалось проверить: нет связи с сайтом.');d.remove();openDownload()};
+ if(q('#d-rel'))q('#d-rel').onclick=()=>{d.remove();if(APP_VER_LIVE&&APP_VER_LIVE!==APP_VER)applyUpd({querySelector:()=>({textContent:''})});else{applyUpd({querySelector:()=>null})}};
+}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._bip=e});
 const nn=n=>String(n||'').trim().toLowerCase().replace(/\s+/g,'_');
 function uidByName(tok){const t=nn(tok);for(const id in members){if(nn(members[id].name)===t)return id}return ''}
 function mentionsOf(x){const set=[];(x.match(/@[^\s@]+/g)||[]).forEach(m=>{const tok=m.slice(1).replace(/[.,!?:;)]+$/,''),low=tok.toLowerCase();if(low==='все'||low==='all'||low==='everyone'){if(isOwner||canPing)set.push('*');return}const id=uidByName(tok);if(id&&id!==uid)set.push(id)});return Array.from(new Set(set))}
@@ -483,12 +526,13 @@ function pageProfile(id){if(!db||!uid){main.innerHTML='<p class="card">'+L('none
   const warns=(SANC[id]||[]);
   if(id===uid&&warns.length)h+='<p class="mu">⚠ '+X('Предупреждений: ','Warnings: ')+warns.length+'</p>';
   const st=id===uid||isOwner?blockedFor(id):'';if(st)h+='<p class="mu">'+esc(st)+'</p>';
-  h+='<div class="row">'+(id!==uid?'<button id="p-dm"'+(m.dmOpen===false?' disabled':'')+'>✉ '+(m.dmOpen===false?X('ЛС закрыты','DMs closed'):X('Написать','Message'))+'</button>':'')+'<button class="g" id="p-sh">🔗 '+X('Поделиться','Share')+'</button>'+(id===uid?'<button class="g" id="p-ed">✎ '+X('Изменить','Edit')+'</button>':'')+(id!==uid?'<button class="g" data-rpu="'+id+'">⚑ '+X('Пожаловаться','Report')+'</button>':'')+(id!==uid?'<button class="g" id="p-bl">'+(blockedBy(id)?X('Разблокировать','Unblock'):X('Заблокировать','Block'))+'</button>':'')+'</div></div>';
+  h+='<div class="row">'+(id!==uid?'<button id="p-dm"'+(m.dmOpen===false?' disabled':'')+'>✉ '+(m.dmOpen===false?X('ЛС закрыты','DMs closed'):X('Написать','Message'))+'</button>':'')+'<button class="g" id="p-sh">🔗 '+X('Поделиться','Share')+'</button>'+(id===uid?'<button class="g" id="p-dl">📥 Скачать</button>':'')+(id===uid?'<button class="g" id="p-ed">✎ '+X('Изменить','Edit')+'</button>':'')+(id!==uid?'<button class="g" data-rpu="'+id+'">⚑ '+X('Пожаловаться','Report')+'</button>':'')+(id!==uid?'<button class="g" id="p-bl">'+(blockedBy(id)?X('Разблокировать','Unblock'):X('Заблокировать','Block'))+'</button>':'')+'</div></div>';
   if(modAny())h+=adminPanel(id);
   main.innerHTML='<h1>'+X('Профиль','Profile')+'</h1>'+h;
   const q=s=>main.querySelector(s);
   if(q('#p-dm'))q('#p-dm').onclick=()=>{CURT={t:'dm',id:id};saveCurt();location.hash='#chat'};
   q('#p-sh').onclick=()=>copyText(location.href.split('#')[0]+'#u-'+id);
+  if(q('#p-dl'))q('#p-dl').onclick=openDownload;
   if(q('#p-ed'))q('#p-ed').onclick=()=>editProfile(id);
   if(q('#p-bl'))q('#p-bl').onclick=()=>{const b=(PREF.blocked||[]).slice(),i=b.indexOf(id);if(i>-1)b.splice(i,1);else b.push(id);db.collection('prefs').doc(uid).set({blocked:b},{merge:true}).then(()=>{PREF.blocked=b;draw()}).catch(()=>toast(L('sendErr')))};
   if(modAny())bindAdmin(id)};
