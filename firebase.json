@@ -1,3 +1,5 @@
 {
+  "firestore": { "rules": "firestore.rules" },
+  "hosting": { "public": ".", "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "functions/**", "desktop/**", "android/**", "*.md"] },
   "functions": [{ "source": "functions", "codebase": "default" }]
 }
